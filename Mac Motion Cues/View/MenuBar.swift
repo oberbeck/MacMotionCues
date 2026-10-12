@@ -66,6 +66,7 @@ struct MenuBar: View {
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
+                        InfoButton(subject: "Style", text: "**Solid:** a plain dot in your chosen tint.\n**Dynamic:** a frosted-glass dot that blurs what's behind it and adapts to light and dark content.")
                     }
 
                     GridRow {
@@ -73,6 +74,7 @@ struct MenuBar: View {
                         DotTintPicker(tint: $settings.dotTint, tintColor: settings.dotTintColor, owner: .dot)
                             .accessibilityElement(children: .contain)
                             .accessibilityLabel("Dot Tint")
+                        InfoButton(subject: "Tint", text: "**Automatic** keeps the standard look: black for Solid, clear glass for Dynamic. A color fills a Solid dot and adds a light wash to a Dynamic one.")
                     }
 
                     GridRow {
@@ -91,6 +93,7 @@ struct MenuBar: View {
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
+                        InfoButton(subject: "Halo", text: "A thin ring around each dot that makes it easier to spot on busy backgrounds.\n**Solid:** a ring in your halo tint.\n**Dynamic:** a frosted ring that adapts to the background.")
                     }
 
                     Group {
@@ -153,8 +156,33 @@ struct MenuBar: View {
             }
             .padding()
         }
-        .frame(width: 300)
+        .frame(width: 320)
         .padding(.vertical)
+    }
+}
+
+/// Small ⓘ button that shows a short explanation in a popover on click.
+private struct InfoButton: View {
+    let subject: LocalizedStringResource
+    let text: LocalizedStringKey
+    @State private var isPresented = false
+
+    var body: some View {
+        Button {
+            isPresented.toggle()
+        } label: {
+            Image(systemName: "info.circle")
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(String(localized: "More info about \(String(localized: subject))"))
+        .popover(isPresented: $isPresented, arrowEdge: .bottom) {
+            Text(text)
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: 240, alignment: .leading)
+                .padding(12)
+        }
     }
 }
 
@@ -366,9 +394,13 @@ private struct MotionStatusPanel: View {
 
             if !pipeline.detectionSources.isEmpty {
                 Divider()
-                Text("Auto-enable when in vehicle")
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(.secondary)
+                HStack(spacing: 4) {
+                    Text("Auto-enable when in vehicle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    InfoButton(subject: "Auto-enable when in vehicle", text: "Shows cues only while you're traveling at vehicle speed, and hides them again shortly after you stop.")
+                }
                 ForEach(pipeline.detectionSources.indices, id: \.self) { idx in
                     let source = pipeline.detectionSources[idx]
                     DetectionSourceRow(source: source, pipeline: pipeline)
@@ -390,6 +422,8 @@ private struct MotionStatusPanel: View {
                 Text("\(Int(settings.motionSensitivity))")
                     .frame(width: 40, alignment: .trailing)
                     .monospacedDigit()
+                // One info button covers both controls in this block.
+                InfoButton(subject: "Sensitivity", text: "**Sensitivity:** how far the dots move for a given motion. Higher means stronger reactions.\n**X Motion:** also moves the dots sideways when the vehicle turns. It's in beta because turning your head can move the dots too.")
             }
 
             MotionReadout(pipeline: pipeline)
@@ -410,14 +444,21 @@ private struct MotionSourceRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Toggle(isOn: Binding(
-                get: { isEnabled },
-                set: { pipeline.setMotionSource(source.id, enabled: $0) }
-            )) {
-                Text(LocalizedStringKey(type(of: source).displayName))
-                    .font(.caption.weight(.semibold))
+            HStack(spacing: 4) {
+                Toggle(isOn: Binding(
+                    get: { isEnabled },
+                    set: { pipeline.setMotionSource(source.id, enabled: $0) }
+                )) {
+                    Text(LocalizedStringKey(type(of: source).displayName))
+                        .font(.caption.weight(.semibold))
+                }
+                .toggleStyle(.switch)
+
+                if source is AirPodsMotionSource {
+                    Spacer()
+                    InfoButton(subject: "AirPods", text: "Moves the dots using the motion sensors in compatible AirPods (Pro, Max, or 3rd generation and later), so they must be worn for the cues to work.")
+                }
             }
-            .toggleStyle(.switch)
 
             if isEnabled {
                 if let airpods = source as? AirPodsMotionSource {
